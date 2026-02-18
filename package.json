@@ -1,0 +1,13 @@
+{
+  "name": "lk-admin",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w frontend",
+    "dev:api": "npm run start:dev -w backend",
+    "install:all": "npm install && npm install -w frontend && npm install -w backend"
+  }
+}
