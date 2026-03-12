@@ -39,24 +39,23 @@ export class AuthController {
     }
 
     @Post('register')
-    async register(
-        @Body() body: { login: string; password: string; email?: string },
-        @Res({ passthrough: true }) res: Response,
-    ) {
-        const r: RegisterResult = await this.auth.registerUser(body.login, body.password, body.email);
-        if (r.ok !== true) return r;
+    async register(@Body() body: any, @Res({ passthrough: true }) res: Response) {
+        const login = String(body?.login ?? '').trim();
+        const password = String(body?.password ?? '');
+        const email = body?.email ? String(body.email).trim() : undefined;
+        const ref = body?.ref ? String(body.ref).trim() : undefined;
 
-        const token = this.auth.signAccessToken(r.user);
+        if (!login || !password) {
+            throw new BadRequestException('login and password required');
+        }
 
-        res.cookie('access_token', token, {
-            httpOnly: true,
-            sameSite: 'lax',
-            secure: false,
-            maxAge: 30 * 60 * 1000,
-            path: '/',
-        });
+        const r: RegisterResult = await this.auth.registerUser(login, password, email, ref);
+        if (!r.ok) return r;
 
-        return { ok: true, user: r.user };
+        // если у тебя register делает авто-логин и ставит cookie — оставь твой код как был
+        // res.cookie(...)
+
+        return r;
     }
 
     @UseGuards(JwtAuthGuard)
@@ -101,4 +100,5 @@ export class AuthController {
         });
         return { ok: true };
     }
+
 }

@@ -108,23 +108,18 @@ export class LkController {
     }
 
     @Get('referrals')
-    getReferrals() {
-        return {
-            ok: true,
-            invitedBy: { nick: 'OldPlayer', joinedAt: '2026-02-01' },
-            invited: [
-                { id: 1, nick: 'NewbieOne', online: true, onlineChar: 'Mage_01' },
-                { id: 2, nick: 'NewbieTwo', online: false, onlineChar: null },
-                { id: 3, nick: 'NewbieThree', online: true, onlineChar: 'Warrior_X' },
-            ],
-            rewards: {
-                available: [
-                    { id: 'r1', title: 'Пригласить 1 игрока', status: 'done', reward: '50 coins' },
-                    { id: 'r2', title: 'Пригласить 3 игроков', status: 'active', reward: '150 coins' },
-                    { id: 'r3', title: 'Пригласить 5 игроков', status: 'locked', reward: '300 coins' },
-                ],
-                note: 'Заглушка: получение наград позже',
-            },
-        };
+    getReferrals(@Req() req: Request & { user?: JwtUser }) {
+        return this.lk.getReferrals(this.getUserId(req));
     }
+    @Get('shop-products')
+    getShopProducts(@Query('limit') limit?: string) {
+        return this.lk.getShopProducts(Number(limit) || 200);
+    }
+    @Post('shop/buy')
+    buy(@Req() req: Request & { user?: JwtUser }, @Body() body: any) {
+        const userId = this.getUserId(req);
+        return this.lk.buyShopProduct(userId, body);
+    }
+
+
 }

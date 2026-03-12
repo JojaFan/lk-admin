@@ -1,19 +1,18 @@
 import { useEffect, useState } from "react";
+import { apiGet } from "../../api/client";
+
 
 export default function LkCoins() {
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState("");
     const [data, setData] = useState(null);
 
-    const API_BASE = "http://localhost:3000";
-    const api = (path) => `${API_BASE}${path}`;
 
     useEffect(() => {
         (async () => {
             try {
-                const r = await fetch(api("/lk/coins"));
-                const d = await r.json();
-                if (!r.ok || !d?.ok) throw new Error(d?.message || "coins failed");
+                const d = await apiGet("/lk/coins");
+                if (!d?.ok) throw new Error(d?.message || "coins failed");
                 setData(d);
             } catch (e) {
                 setErr(e.message || "Error");

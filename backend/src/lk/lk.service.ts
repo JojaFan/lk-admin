@@ -216,6 +216,33 @@ export class LkService {
     }
 
     async getChars(userId: number, limit = 50) {
+        // ✅ 0) Сначала пробуем "визуальные" персонажи из lk_characters (для ЛК/UI)
+        try {
+            const [rows] = await pool.query<RowDataPacket[]>(
+                `
+    SELECT id, name, class, race, level, equipment_json
+    FROM lk_characters
+    WHERE user_id = ?
+    ORDER BY id DESC
+    LIMIT ?
+    `,
+                [userId, limit],
+            );
+
+            const list = (rows as any[]).map((r) => ({
+                id: Number(r.id),
+                name: String(r.name),
+                level: r.level != null ? Number(r.level) : 1,
+                class: r.class ? String(r.class) : null,
+                race: r.race ? String(r.race) : null,
+                equipment: r.equipment_json ? r.equipment_json : {},
+            }));
+
+            // если нашли хотя бы одного — возвращаем и НЕ идём в base/top
+            if (list.length) return { ok: true, characters: list };
+        } catch {
+            // если таблицы ещё нет — просто идём дальше на base/top
+        }
         const baseCols = await this.getColumns('base').catch(() => null);
 
         if (baseCols) {
@@ -328,7 +355,7 @@ export class LkService {
 
         if (userId && !Number.isNaN(userId)) {
             const [uRows] = await pool.query<RowDataPacket[]>(
-                `SELECT id, login AS username, email, role, status
+                `SELECT id, login AS username, email, role, status, referral_code
          FROM lk_users
          WHERE id = ?
          LIMIT 1`,
@@ -339,7 +366,7 @@ export class LkService {
 
         if (!u && login) {
             const [uRows2] = await pool.query<RowDataPacket[]>(
-                `SELECT id, login AS username, email, role, status
+                `SELECT id, login AS username, email, role, status, referral_code
          FROM lk_users
          WHERE login = ?
          LIMIT 1`,
@@ -371,7 +398,7 @@ export class LkService {
                 username: u.username ?? '',
                 ip: currentIp ?? '',
                 lastLoginIp,
-                referralCode: `U${u.id}`,
+                referralCode: u.referral_code ?? `U${u.id}`,
             },
             promocodes: {
                 active: promocodes.active ?? [],
@@ -381,4 +408,84 @@ export class LkService {
             vote: { title: 'Голосование за сервер', url: '#' },
         };
     }
+    async getReferrals(userId: number) {
+        // Кто пригласил меня?
+        const [invitedByRows] = await pool.query<RowDataPacket[]>(
+            `
+    SELECT u.id, u.login, r.created_at
+    FROM referrals r
+    JOIN lk_users u ON u.id = r.referrer_userid
+    WHERE r.referred_userid = ?
+    LIMIT 1
+    `,
+            [userId],
+        );
+
+        // Кого пригласил я?
+        const [invitedRows] = await pool.query<RowDataPacket[]>(
+            `
+    SELECT u.id, u.login, u.created_at
+    FROM referrals r
+    JOIN lk_users u ON u.id = r.referred_userid
+    WHERE r.referrer_userid = ?
+    ORDER BY r.created_at DESC
+    `,
+            [userId],
+        );
+
+        const invitedBy = (invitedByRows as any[])?.[0]
+            ? {
+                id: Number((invitedByRows as any[])[0].id),
+                login: String((invitedByRows as any[])[0].login),
+                joinedAt: (invitedByRows as any[])[0].created_at,
+            }
+            : null;
+
+        const invited = (invitedRows as any[]).map((x) => ({
+            id: Number((x as any).id),
+            login: String((x as any).login),
+            createdAt: (x as any).created_at,
+        }));
+
+        return { ok: true, invitedBy, total: invited.length, invited };
+    }
+    async getShopProducts(limit = 200) {
+        const [rows] = await pool.query<RowDataPacket[]>(
+            `
+    SELECT
+      p.id,
+      p.item_id AS itemId,
+      i.name AS name,
+      p.stack_count AS stackCount,
+      p.price
+    FROM lk_shop_products p
+    LEFT JOIN item_items i ON i.item_id = p.item_id
+    WHERE p.is_enabled = 1
+    ORDER BY p.sort_order ASC, p.id DESC
+    LIMIT ?
+    `,
+            [limit],
+        );
+
+        return { ok: true, items: rows };
+    }
+
+    async buyShopProduct(userId: number, body: { productId: number; charId: number; qty?: number }) {
+        const productId = Number(body.productId);
+        const charId = Number(body.charId);
+        const qty = Math.max(1, Number(body.qty || 1));
+
+        if (!productId || !charId) return { ok: false, error: 'Missing productId/charId' };
+
+        // ✅ берём персонажей этого аккаунта
+        const charsRes = await this.getChars(userId, 999);
+        const chars = (charsRes as any)?.characters || [];
+
+        const owns = chars.some((c: any) => Number(c.id) === charId);
+        if (!owns) return { ok: false, error: 'Character does not belong to this account' };
+
+        // дальше: товар -> mail
+        return { ok: true };
+    }
+
 }

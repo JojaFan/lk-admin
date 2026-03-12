@@ -8,9 +8,12 @@ import { EventsModule } from './admin/marathons/events/events.module';
 import { RewardsModule } from './admin/marathons/rewards/rewards.module';
 import { StatsModule } from './admin/marathons/stats/stats.module';
 import { InventoryModule } from './inventory/inventory.module';
+import { HealthController } from "./health.controller";
+
 
 @Module({
     imports: [AuthModule, AdminModule, AccountsModule, LkModule, AdminMarathonsModule, EventsModule, RewardsModule, StatsModule, InventoryModule],
+    controllers: [HealthController],
 
 })
 export class AppModule {

@@ -1,14 +1,13 @@
-import { useEffect, useState } from "react";
+import {useEffect, useState} from "react";
+import { apiGet, apiPost } from "../../api/client";
 
 export default function LkShop() {
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState("");
-    const [chars, setChars] = useState([]);
-    const [charId, setCharId] = useState("");
     const [items, setItems] = useState([]);
 
-    const API_BASE = "http://localhost:3000";
-    const api = (path) => `${API_BASE}${path}`;
+    const [chars, setChars] = useState([]);
+    const [charId, setCharId] = useState("");
 
     useEffect(() => {
         (async () => {
@@ -16,65 +15,82 @@ export default function LkShop() {
                 setErr("");
                 setLoading(true);
 
-                const r1 = await fetch(api("/lk/chars"));
-                const d1 = await r1.json();
-                if (!r1.ok || !d1?.ok) throw new Error(d1?.message || "chars failed");
+                const d = await apiGet("/lk/shop-products");
+                if (!d?.ok) throw new Error(d?.message || d?.error || "shop-products failed");
 
-                setChars(d1.characters || []);
-                const firstId = String(d1.characters?.[0]?.id || "");
-                setCharId(firstId);
-
-                const r2 = await fetch(api(`/lk/shop?charId=${firstId}`));
-                const d2 = await r2.json();
-                if (!r2.ok || !d2?.ok) throw new Error(d2?.message || "shop failed");
-                setItems(d2.items || []);
+                setItems(d.items || []);
             } catch (e) {
-                setErr(e.message || "Error");
+                setErr(String(e?.message || e));
             } finally {
                 setLoading(false);
             }
+            const c = await apiGet("/lk/chars");
+            if (c?.ok) setChars(c.items || c.chars || []);
         })();
     }, []);
 
-    async function onChangeChar(e) {
-        const id = e.target.value;
-        setCharId(id);
-        setErr("");
-        try {
-            const r = await fetch(api(`/lk/shop?charId=${id}`));
-            const d = await r.json();
-            if (!r.ok || !d?.ok) throw new Error(d?.message || "shop failed");
-            setItems(d.items || []);
-        } catch (e) {
-            setErr(e.message || "Error");
-        }
+    async function buy(productId) {
+        if (!charId) return alert("Выбери персонажа");
+        const r = await apiPost("/lk/shop/buy", {productId, charId: Number(charId), qty: 1});
+        if (!r?.ok) return alert(r?.error || r?.message || "Не удалось купить");
+        alert("Отправлено на почту персонажа ✅");
     }
 
     if (loading) return <div>Loading…</div>;
-    if (err) return <div style={{ color: "crimson" }}>{err}</div>;
+    if (err) return <div style={{color: "crimson"}}>{err}</div>;
 
     return (
         <div>
             <h2>Магазин</h2>
+            <div style={{display: "flex", gap: 10, alignItems: "center", marginBottom: 12}}>
+                <div style={{fontWeight: 800}}>Персонаж:</div>
 
-            <label>
-                Персонаж:{" "}
-                <select value={charId} onChange={onChangeChar}>
+                <select value={charId} onChange={(e) => setCharId(e.target.value)}>
+                    <option value="">— выбери персонажа —</option>
                     {chars.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
+                        <option key={c.id || c.roleId} value={c.id || c.roleId}>
+                            {c.name || c.rolename} (lvl {c.level || c.rolelevel})
+                        </option>
                     ))}
                 </select>
-            </label>
+            </div>
 
-            <hr />
+            <table className="cosmoTable">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Предмет</th>
+                    <th>Кол-во</th>
+                    <th>Цена</th>
+                    <th>Купить</th>
+                </tr>
+                </thead>
+                <tbody>
 
-            <ul>
                 {items.map((it) => (
-                    <li key={it.id}>
-                        {it.name} — {it.price}
-                    </li>
+                    <tr key={it.id}>
+                        <td>{it.itemId}</td>
+                        <td>{it.name || "(без названия)"}</td>
+                        <td>{it.stackCount}</td>
+                        <td>{it.price}</td>
+                        <td>
+                            <button
+                                className="adminBtn"
+                                disabled={!charId}
+                                onClick={() => buy(it.id)}
+                            >
+                                Купить
+                            </button>
+                        </td>
+                    </tr>
                 ))}
-            </ul>
+                {items.length === 0 && (
+                    <tr>
+                        <td colSpan={4} style={{opacity: 0.7}}>Пока нет товаров</td>
+                    </tr>
+                )}
+                </tbody>
+            </table>
         </div>
     );
 }

@@ -1,5 +1,5 @@
 import React from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import {Navigate, Route, Routes} from "react-router-dom";
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -24,28 +24,29 @@ import LkInventory from "./pages/lk/LkInventory.jsx";
 import AdminLayout from "./components/outlet/AdminLayout.jsx";
 import AdminDonateRating from "./pages/admin/AdminDonateRating";
 import AdminAccounts from "./pages/admin/AdminAccounts";
-import AdminShopItems from "./pages/admin/AdminShopItems";
+import AdminShop from "./pages/admin/AdminShop.jsx";
 import AdminAccountView from "./pages/admin/AdminAccountView";
 import LkMarafones from "./pages/lk/LkMarafones.jsx";
 import AdminMarathons from "./pages/admin/AdminMarathons";
 import AdminMarathonView from "./pages/admin/AdminMarathonView";
 import AdminGrantItems from "./pages/admin/AdminGrantItems.jsx";
+import AdminCalendar from "./pages/admin/AdminCalendar.jsx";
 
 export default function App() {
     return (
         <Routes>
             {/* public */}
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/dashboard" element={<DashboardRedirect />} />
+            <Route path="/" element={<Home/>}/>
+            <Route path="/login" element={<Login/>}/>
+            <Route path="/register" element={<Register/>}/>
+            <Route path="/dashboard" element={<DashboardRedirect/>}/>
 
             {/* optional dev panel */}
             <Route
                 path="/dev"
                 element={
                     <ProtectedRoute allowRoles={["admin"]}>
-                        <DevPanel />
+                        <DevPanel/>
                     </ProtectedRoute>
                 }
             />
@@ -56,46 +57,42 @@ export default function App() {
                 path="/lk"
                 element={
                     <ProtectedRoute allowRoles={["admin", "support", "user"]}>
-                        <LkLayout />
+                        <LkLayout/>
                     </ProtectedRoute>
                 }
             >
 
-                <Route path="/lk/inventory" element={<LkInventory />} />
-                <Route index element={<Navigate to="/lk/home" replace />} />
-                <Route path="home" element={<LkHome />} />
-                <Route path="chars" element={<LkChars />} />
-                <Route path="shop" element={<LkShop />} />
-                <Route path="coins" element={<LkCoins />} />
-                <Route path="ratings" element={<LkRatings />} />
-                <Route path="donate" element={<LkDonate />} />
-                <Route path="referrals" element={<LkReferrals />} />
-                <Route path='marafones' element={<LkMarafones />} />
+                <Route path="/lk/inventory" element={<LkInventory/>}/>
+                <Route index element={<Navigate to="/lk/home" replace/>}/>
+                <Route path="home" element={<LkHome/>}/>
+                <Route path="chars" element={<LkChars/>}/>
+                <Route path="shop" element={<LkShop/>}/>
+                <Route path="coins" element={<LkCoins/>}/>
+                <Route path="ratings" element={<LkRatings/>}/>
+                <Route path="donate" element={<LkDonate/>}/>
+                <Route path="referrals" element={<LkReferrals/>}/>
+                <Route path='marafones' element={<LkMarafones/>}/>
             </Route>
 
             {/* Admin (admin only) */}
 
-            <Route
-                path="/admin"
-                element={
-                    <ProtectedRoute allowRoles={["admin"]}>
-                        <AdminLayout />
-                    </ProtectedRoute>
-                }
+            <Route path="/admin" element={<AdminLayout/>}>
+                <Route path="accounts" element={<AdminAccounts/>}/>
+                <Route path="accounts/:id" element={<AdminAccountView/>}/>
 
-            >
-                <Route path="/admin/grant" element={<AdminGrantItems />} />
-                <Route path="marathons" element={<AdminMarathons />} />
-                <Route path="marathons/:id" element={<AdminMarathonView />} />
-                <Route path="accounts/:id" element={<AdminAccountView />} />
-                <Route index element={<Navigate to="/admin/accounts" replace />} />
-                <Route path="donate-rating" element={<AdminDonateRating />} />
-                <Route path="accounts" element={<AdminAccounts />} />
-                <Route path="shop-items" element={<AdminShopItems />} />
+                <Route path="marathons" element={<AdminMarathons/>}/>
+                <Route path="marathons/:id" element={<AdminMarathonView/>}/>
+
+                <Route path="donate-rating" element={<AdminDonateRating/>}/>
+                <Route path="grant-items" element={<AdminGrantItems/>}/>
+                <Route path="shop" element={<AdminShop/>}/>
+                <Route path="calendar" element={<AdminCalendar />} />
+
+                {/* чтобы /admin открывал accounts */}
+                <Route index element={<AdminAccounts/>}/>
             </Route>
-
             {/* default */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/" replace/>}/>
         </Routes>
     );
 }

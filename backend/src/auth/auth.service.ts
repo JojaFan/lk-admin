@@ -1,7 +1,9 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { randomBytes } from 'crypto';
 import type { RowDataPacket, ResultSetHeader } from 'mysql2';
+
 
 import { pool } from '../db/mysql';
 import type { JwtPayload, Role } from './types';
@@ -66,11 +68,13 @@ export class AuthService {
     }
 
     // Регистрация (создаёт юзера в lk_users)
-    async registerUser(login: string, password: string, email?: string): Promise<RegisterResult> {
+    async registerUser(login: string, password: string, email?: string, ref?: string): Promise<RegisterResult> {
+
         const [exists] = await pool.query<RowDataPacket[]>(
             `SELECT id FROM lk_users WHERE login = ? LIMIT 1`,
             [login],
         );
+
         if (exists.length) return { ok: false, error: 'login_taken' };
 
         const [aExists] = await pool.query<RowDataPacket[]>(
@@ -79,20 +83,62 @@ export class AuthService {
         );
         if (aExists.length) return { ok: false, error: 'login_reserved' };
 
+
         const password_hash = await bcrypt.hash(password, 10);
+        const referralCode = await this.generateReferralCode();
 
         const [ins] = await pool.query<ResultSetHeader>(
-            `INSERT INTO lk_users (login, password_hash, role, status, email)
-             VALUES (?, ?, 'user', 'active', ?)`,
-            [login, password_hash, email ?? null],
+            `INSERT INTO lk_users (login, password_hash, role, status, email, referral_code)
+             VALUES (?, ?, 'user', 'active', ?, ?)`,
+            [login, password_hash, email ?? null, referralCode],
         );
 
+
         const id = Number(ins.insertId);
+        // Если регистрация была по реф-ссылке, создаём связь (referral_code -> referrer_userid)
+        const normalizedRef = (ref ?? '').trim();
+        if (normalizedRef) {
+            const [refRows] = await pool.query<RowDataPacket[]>(
+                `SELECT id FROM lk_users WHERE referral_code = ? LIMIT 1`,
+                [normalizedRef],
+            );
+
+            const referrerId = Number((refRows as any[])?.[0]?.id ?? 0);
+            if (referrerId && referrerId !== id) {
+                // Один юзер может быть рефералом только 1 раз -> UNIQUE(referred_userid)
+                await pool.query(
+                    `INSERT IGNORE INTO referrals (referrer_userid, referred_userid) VALUES (?, ?)`,
+                    [referrerId, id],
+                );
+            }
+        }
+
+
 
         return {
             ok: true,
             user: { id, login, role: 'user' },
         };
+    }
+    private async generateReferralCode(): Promise<string> {
+        // 12 символов A-Z0-9
+        const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+
+        for (let attempt = 0; attempt < 10; attempt++) {
+            const buf = randomBytes(12);
+            let code = '';
+            for (let i = 0; i < 12; i++) code += alphabet[buf[i] % alphabet.length];
+
+            const [rows] = await pool.query<RowDataPacket[]>(
+                `SELECT id FROM lk_users WHERE referral_code = ? LIMIT 1`,
+                [code],
+            );
+
+            if (!(rows as any[]).length) return code;
+        }
+
+        // fallback (крайний случай)
+        return 'REF' + String(Date.now());
     }
 
     signAccessToken(user: JwtPayload): string {
@@ -102,6 +148,7 @@ export class AuthService {
             role: user.role,
         });
     }
+
 
     // ✅ лог логина в login_log
     async logLogin(user: JwtPayload, ip: string) {

@@ -1,66 +1,66 @@
 import React from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { useAuth } from "../../auth/AuthContext.jsx";
+import {NavLink, Outlet, useNavigate} from "react-router-dom";
+
 
 export default function AdminLayout() {
-    const { user, logout } = useAuth();
-    const nav = useNavigate();
+    const navigate = useNavigate();
 
-    async function doLogout() {
-        await logout();
-        nav("/", { replace: true });
+    async function handleLogout() {
+        try {
+            await fetch("/api/auth/logout", {
+                method: "POST",
+                credentials: "include",
+            });
+        } catch (e) {}
+
+        navigate("/");
+        window.location.reload(); // чтобы полностью сбросить состояние
     }
-
-    const adminTabClass = ({ isActive }) =>
-        "admin-link" + (isActive ? " active" : "");
-
     return (
-        <div className="container">
-            <div className="page">
-                <div className="card">
-                    <div className="card-b">
-                        <div className="admin-top">
-                            <div>
-                                <NavLink to="/" className="admin-link">← На сайт</NavLink>
-                                <span className="admin-badge">ADMIN</span>{" "}
-                                <span style={{ fontWeight: 700 }}>
-                  — {user?.login} ({user?.role})
-                </span>
-                            </div>
 
-                            <button onClick={doLogout} className="btn btn-light">
-                                Logout
-                            </button>
-                        </div>
-
-                        <div className="admin-sub">
-                            <NavLink to="/admin/donate-rating" className={adminTabClass}>
-                                Рейтинг доната
-                            </NavLink>
-
-                            <NavLink to="/admin/accounts" className={adminTabClass}>
-                                Управление пользователями
-                            </NavLink>
-
-                            <NavLink to="/admin/shop-items" className={adminTabClass}>
-                                Магазин (товары)
-                            </NavLink>
-
-                            <NavLink to="/admin/marathons" className={adminTabClass}>
-                                Марафоны
-                            </NavLink>
-
-                            <NavLink to="/admin/grant" className={adminTabClass}>
-                                Управление предметами
-                            </NavLink>
-                        </div>
-
-                        <hr className="sep" />
-
-                        <Outlet />
+        <div className="adminApp">
+            <aside className="adminSidebar">
+                <div className="adminBrand">
+                    <div className="adminLogo">LK</div>
+                    <div>
+                        <div className="adminTitle">Admin Panel</div>
+                        <div className="adminSub">Management</div>
+                    </div>
+                    <div className="adminSideFooter">
+                        <button className="adminBtnGhost" onClick={handleLogout}>
+                            Выйти
+                        </button>
                     </div>
                 </div>
-            </div>
+
+
+                <nav className="adminNav">
+                    <NavLink to="/admin/accounts" className="adminLink">Аккаунты</NavLink>
+                    <NavLink to="/admin/marathons" className="adminLink">Марафоны</NavLink>
+                    <NavLink to="/admin/shop" className="adminLink">Магазин</NavLink>
+                    <NavLink to="/admin/grant-items" className="adminLink">Выдача предметов</NavLink>
+                    <NavLink to="/admin/donate-rating" className="adminLink">Рейтинг доната</NavLink>
+                    <NavLink to="/admin/calendar" className="adminLink">Управление календарём</NavLink>
+                </nav>
+            </aside>
+
+
+
+            <main className="adminMain">
+                <header className="adminTopbar">
+                    <div className="adminPageTitle">Админ панель</div>
+                </header>
+
+
+                <div className="adminContent">
+                    <Outlet/>
+                </div>
+
+            </main>
+
         </div>
+
     );
+
+
 }

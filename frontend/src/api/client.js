@@ -1,6 +1,9 @@
 const API = "/api";
 
+console.log("CLIENT.JS LOADED, API =", API);
+
 export async function apiGet(path) {
+    console.log("apiGet url =", `${API}${path}`);
     const r = await fetch(`${API}${path}`, { credentials: "include" });
 
     if (r.status === 401) throw new Error("401: Not logged in");
@@ -38,4 +41,35 @@ export async function apiPost(path, body) {
     return j;
 
 
+
+}
+export async function apiDelete(path) {
+    const r = await fetch(`${API}${path}`, {
+        method: "DELETE",
+        credentials: "include",
+    });
+
+    const text = await r.text();
+    let j = null;
+    try { j = text ? JSON.parse(text) : null; } catch {}
+
+    if (!r.ok) return j || { ok: false, error: text || r.statusText, statusCode: r.status };
+    return j;
+}
+
+// ---- Admin Shop ----
+export function adminGetShopProducts() {
+    return apiGet("/admin/shop/products");
+}
+
+export function adminCreateShopProduct(body) {
+    return apiPost("/admin/shop/products", body);
+}
+
+export function adminUpdateShopProduct(id, body) {
+    return apiPatch(`/admin/shop/products/${id}`, body);
+}
+
+export function adminDeleteShopProduct(id) {
+    return apiDelete(`/admin/shop/products/${id}`);
 }
